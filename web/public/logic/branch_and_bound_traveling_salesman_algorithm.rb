@@ -36,6 +36,7 @@ class BranchBound
     least_edges_all_with = least_edges_all(included: included.merge(path), excluded: excluded)[0].flatten.map(&:to_s).inject(:+)
     least_edges_all_without = least_edges_all(included: included, excluded: excluded.merge(path))[0].flatten.map(&:to_s).inject(:+)
 
+    # binding.pry
     if least_edges_all_with > least_edges_all_without
       @included = @included.merge(path)
     else
@@ -46,9 +47,12 @@ class BranchBound
   def least_edges_all(included: {}, excluded: {})
     # included and excluded will be hashes; the hash is trip-name:=>distance, empty hashes cool
     least_all = []
+    # binding.pry
     @matrix.each do |hash|
+      binding.pry
       least_all << least_edges(included: included, excluded: excluded, hash: hash)
     end
+    # binding.pry
     return least_all
     # an array of hashes from each level of the matrix
   end
@@ -56,25 +60,29 @@ class BranchBound
 
   def least_edges(included: {}, excluded: {}, hash: hash)
     # included and excluded will be hashes; the hash is trip-name:=>distance, empty hashes cool
-    least = included
+    keeper_array = included.keys & hash.keys
+    least = included.keep_if {|k,_| keeper_array.include?(k) }
     hashwork = hash
-    step1 = hashwork.delete_if {|key, value| excluded.has_key?(key) }
+    step1 = hashwork.delete_if {|key, value| excluded.has_key?(key) }.delete_if {|k,_| least.has_key?(k)}
     step2 = step1.sort_by {|_,v| v}
     i = 0
-    until ((least.length == 2) || (step2[i].nil?))
-      least[step2[i][0]] = step2[i][1]
-      i += 1
+    until (least.length > 1)
+      if (step2[i].nil?)
+        least["fail"+i.to_s] = Float::INFINITY
+        i += 1
+      else
+        least[step2[i][0]] = step2[i][1]
+        i += 1
+      end
     end
     return least
     # will return a hash of the 2 lowest distances, minus any excluded
   end
 
   def build_result
-    binding.pry
     solution_array = []
     home_holder = @included.keep_if {|k,v| k.include?(@home) }
     other_holder = @included.keep_if {|k,v| !k.include?(@home) }
-    binding.pry
     holder = home.pop
     find = holder.keys.split('--')[1]
     solution_array << holder
